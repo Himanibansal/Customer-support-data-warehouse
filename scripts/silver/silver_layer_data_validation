@@ -1,0 +1,54 @@
+/*
+===============================================================================
+Validation Script: Silver Data Validation
+===============================================================================
+
+Script Purpose:
+Validates data loading into Silver tables by checking record counts and
+sampling data to confirm successful ingestion and basic data integrity.
+
+Run this script after executing the Bronze load procedure.
+
+===============================================================================
+*/
+
+
+SELECT  * 
+FROM silver.issues
+where issue_id =1004366
+
+
+SELECT * 
+FROM silver.issues_snapshot
+where issue_id =1004366
+
+SELECT  * 
+FROM silver.issues_change_history
+where issue_id =1004366
+
+
+SELECT  * 
+FROM silver.issues_snapshot_sample
+where issue_id =1004366
+
+SELECT * 
+FROM silver.sample_utterances
+where issue_id =1004366
+
+---------------
+
+SELECT count(*)
+FROM silver.issues
+
+
+SELECT count(*) 
+FROM silver.issues_snapshot
+
+SELECT  count(*) 
+FROM silver.issues_change_history
+
+SELECT  count(*)
+FROM silver.issues_snapshot_sample
+
+SELECT count(*) 
+FROM silver.sample_utterances
