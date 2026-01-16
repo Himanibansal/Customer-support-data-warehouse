@@ -1,0 +1,423 @@
+/*
+===============================================================================
+DDL Script: Create Silver Tables
+===============================================================================
+
+Script Purpose:
+Creates cleaned and standardized Silver layer tables from the Bronze layer.
+Applies proper data types, derived metrics, and prepares data for analytics
+and downstream Gold modeling.
+
+Run this script to initialize or refresh the Silver layer structure.
+
+===============================================================================
+*/
+
+CREATE OR ALTER PROCEDURE Silver.load_silver AS
+BEGIN
+    DECLARE @start_time DATETIME, @end_time DATETIME;
+    BEGIN TRY
+        SET @start_time = GETDATE();
+        PRINT '================================================='
+        PRINT 'Loading Silver Layer'
+        PRINT '================================================='
+        TRUNCATE TABLE silver.issues;
+        INSERT INTO silver.issues
+        (   issue_id,
+            started_date,
+            ended_date,
+            issue_num,
+            issue_proj,
+            issue_reporter,
+            issue_assignee,
+            issue_contr_count,
+            issue_type,
+            issue_priority,
+            issue_priority_rank,
+            issue_created,
+            issue_resolution_date,
+            issue_resolution,
+            issue_status,
+            issue_comments_count,
+            last_change_date,
+            wf_open,
+            wfe_open,
+            wf_in_progress,
+            wfe_in_progress,
+            wf_review,
+            wfe_review,
+            wf_pending,
+            wfe_pending,
+            wf_completed,
+            wfe_completed,
+            wf_cancelled,
+            wfe_cancelled
+        )
+        SELECT  CAST(TRY_CAST(id AS FLOAT) AS BIGINT) AS issue_id,
+		        CAST(TRY_CAST(started AS DATETIMEOFFSET) AS DATETIME2(0)) AS started_date,
+		        CAST(TRY_CAST(ended AS DATETIMEOFFSET) AS DATETIME2(0)) AS ended_date,
+		        CAST(TRY_CAST(issue_num AS FLOAT) AS INT) AS issue_num,
+		        issue_proj,
+		        issue_reporter,
+		        COALESCE(issue_assignee, 'not assigned') AS issue_assignee,
+                CAST(TRY_CAST(issue_contr_count AS FLOAT) AS INT) AS issue_contr_count,
+                issue_type,
+                issue_priority,
+                CASE issue_priority
+                WHEN 'Blocker' THEN 1
+                WHEN 'Highest' THEN 2
+                WHEN 'High'    THEN 3
+                WHEN 'Medium'  THEN 4
+                WHEN 'Low'     THEN 5
+                WHEN 'Lowest'  THEN 6
+                ELSE 99    -- unknown
+            END AS dwh_issue_priority_rank,
+            CAST(TRY_CAST(issue_created AS DATETIMEOFFSET) AS DATETIME2(0)) AS issue_created,
+            CAST(TRY_CAST(issue_resolution_date AS DATETIMEOFFSET) AS DATETIME2(0)) AS issue_resolution_date,
+            issue_resolution,
+            CASE 
+                WHEN issue_status IN ('open','reopened','to_do') THEN 'open'
+                WHEN issue_status = 'in_progress' THEN 'in_progress'
+                WHEN issue_status IN ('in_review','under_review','validation') THEN 'review'
+                WHEN issue_status IN ('deployment','pending_deployment','waiting','pending_customer_approval') THEN 'pending'
+                WHEN issue_status IN ('done','closed','approved','resolved','resolved_under_monitoring','monitoring') THEN 'completed'
+                WHEN issue_status IN ('cancelled','rejected') THEN 'cancelled'
+                ELSE 'other'
+                END AS issue_status,
+            issue_comments_count,
+            CAST(TRY_CAST(last_change_date AS DATETIMEOFFSET) AS DATETIME2(0)) AS last_change_date,
+            ----------------------------------------------------------------
+            -- OPEN
+            ----------------------------------------------------------------
+              ABS(COALESCE(CAST(TRY_CAST(wf_open AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_to_do AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_reopened AS FLOAT) AS INT), 0))
+            AS wf_open,
+
+              ABS(COALESCE(CAST(TRY_CAST(wfe_open AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_to_do AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_reopened AS FLOAT) AS INT), 0))
+            AS wfe_open,
+
+            ----------------------------------------------------------------
+            -- IN PROGRESS
+            ----------------------------------------------------------------
+             ABS(COALESCE(CAST(TRY_CAST(wf_in_progress AS FLOAT) AS INT), 0))
+            AS wf_in_progress,
+
+            ABS(COALESCE(CAST(TRY_CAST(wfe_in_progress AS FLOAT) AS INT), 0))
+            AS wfe_in_progress,
+
+            ----------------------------------------------------------------
+            -- REVIEW
+            ----------------------------------------------------------------
+              ABS(COALESCE(CAST(TRY_CAST(wf_in_review AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_under_review AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_validation AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_testing_monitoring AS FLOAT) AS INT), 0))
+            AS wf_review,
+
+              ABS(COALESCE(CAST(TRY_CAST(wfe_in_review AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_under_review AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_validation AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_testing_monitoring AS FLOAT) AS INT), 0))
+            AS wfe_review,
+
+            ----------------------------------------------------------------
+            -- PENDING
+            ----------------------------------------------------------------
+              ABS(COALESCE(CAST(TRY_CAST(wf_deployment AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_pending_deployment AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_waiting AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_pending_customer_approval AS FLOAT) AS INT), 0))
+            AS wf_pending,
+
+             ABS(COALESCE(CAST(TRY_CAST(wfe_deployment AS FLOAT) AS INT), 0))
+           + ABS(COALESCE(CAST(TRY_CAST(wfe_pending_deployment AS FLOAT) AS INT), 0))
+           + ABS(COALESCE(CAST(TRY_CAST(wfe_waiting AS FLOAT) AS INT), 0))
+           + ABS(COALESCE(CAST(TRY_CAST(wfe_pending_customer_approval AS FLOAT) AS INT), 0))
+            AS wfe_pending,
+
+            ----------------------------------------------------------------
+            -- COMPLETED
+            ----------------------------------------------------------------
+
+              ABS(COALESCE(CAST(TRY_CAST(wf_resolved AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_resolved_under_monitoring AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_done AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_closed AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_approved AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_monitoring AS FLOAT) AS INT), 0))
+            AS wf_completed,
+
+
+            ABS(COALESCE(CAST(TRY_CAST(wfe_resolved AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_resolved_under_monitoring AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_done AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_closed AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_approved AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_monitoring AS FLOAT) AS INT), 0))
+            AS wfe_completed,
+
+            ----------------------------------------------------------------
+            -- CANCELLED
+            ----------------------------------------------------------------
+            ABS(COALESCE(CAST(TRY_CAST(wf_cancelled AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_rejected AS FLOAT) AS INT), 0))
+            AS wf_cancelled,
+
+
+            ABS(COALESCE(CAST(TRY_CAST(wfe_cancelled AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_rejected AS FLOAT) AS INT), 0))
+            AS wfe_cancelled
+        FROM bronze.issues
+
+        TRUNCATE TABLE silver.issues_snapshot;
+        INSERT INTO silver.issues_snapshot
+        (   issue_activity_id,
+            issue_id,
+            started_date,
+            ended_date,
+            issue_num,
+            issue_proj,
+            issue_reporter,
+            issue_assignee,
+            issue_contr_count,
+            issue_type,
+            issue_priority,
+            issue_priority_rank,
+            issue_created,
+            issue_resolution_date,
+            issue_resolution,
+            issue_status,
+            issue_comments_count,
+            last_change_date,
+            wf_open,
+            wfe_open,
+            wf_in_progress,
+            wfe_in_progress,
+            wf_review,
+            wfe_review,
+            wf_pending,
+            wfe_pending,
+            wf_completed,
+            wfe_completed,
+            wf_cancelled,
+            wfe_cancelled
+        )
+        SELECT  CAST(TRY_CAST(idx AS FLOAT) AS BIGINT) AS issue_activity_id,
+                CAST(TRY_CAST(id AS FLOAT) AS BIGINT) AS issue_id,
+		        CAST(TRY_CAST(started AS DATETIMEOFFSET) AS DATETIME2(0)) AS started_date,
+		        CAST(TRY_CAST(ended AS DATETIMEOFFSET) AS DATETIME2(0)) AS ended_date,
+		        CAST(TRY_CAST(issue_num AS FLOAT) AS INT) AS issue_num,
+		        issue_proj,
+		        issue_reporter,
+		        COALESCE(issue_assignee, 'not assigned') AS issue_assignee,
+                CAST(TRY_CAST(issue_contr_count AS FLOAT) AS INT) AS issue_contr_count,
+                issue_type,
+                issue_priority,
+                CASE issue_priority
+                WHEN 'Blocker' THEN 1
+                WHEN 'Highest' THEN 2
+                WHEN 'High'    THEN 3
+                WHEN 'Medium'  THEN 4
+                WHEN 'Low'     THEN 5
+                WHEN 'Lowest'  THEN 6
+                ELSE 99    -- unknown
+            END AS dwh_issue_priority_rank,
+            CAST(TRY_CAST(issue_created AS DATETIMEOFFSET) AS DATETIME2(0)) AS issue_created,
+            CAST(TRY_CAST(issue_resolution_date AS DATETIMEOFFSET) AS DATETIME2(0)) AS issue_resolution_date,
+            issue_resolution,
+            CASE 
+                WHEN issue_status IN ('open','reopened','to_do') THEN 'open'
+                WHEN issue_status = 'in_progress' THEN 'in_progress'
+                WHEN issue_status IN ('in_review','under_review','validation') THEN 'review'
+                WHEN issue_status IN ('deployment','pending_deployment','waiting','pending_customer_approval') THEN 'pending'
+                WHEN issue_status IN ('done','closed','approved','resolved','resolved_under_monitoring','monitoring') THEN 'completed'
+                WHEN issue_status IN ('cancelled','rejected') THEN 'cancelled'
+                ELSE 'other'
+                END AS issue_status,
+            issue_comments_count,
+            CAST(TRY_CAST(last_change_date AS DATETIMEOFFSET) AS DATETIME2(0)) AS last_change_date,
+            ----------------------------------------------------------------
+            -- OPEN
+            ----------------------------------------------------------------
+              ABS(COALESCE(CAST(TRY_CAST(wf_open AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_to_do AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_reopened AS FLOAT) AS INT), 0))
+            AS wf_open,
+
+              ABS(COALESCE(CAST(TRY_CAST(wfe_open AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_to_do AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_reopened AS FLOAT) AS INT), 0))
+            AS wfe_open,
+
+            ----------------------------------------------------------------
+            -- IN PROGRESS
+            ----------------------------------------------------------------
+             ABS(COALESCE(CAST(TRY_CAST(wf_in_progress AS FLOAT) AS INT), 0))
+            AS wf_in_progress,
+
+            ABS(COALESCE(CAST(TRY_CAST(wfe_in_progress AS FLOAT) AS INT), 0))
+            AS wfe_in_progress,
+
+            ----------------------------------------------------------------
+            -- REVIEW
+            ----------------------------------------------------------------
+              ABS(COALESCE(CAST(TRY_CAST(wf_in_review AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_under_review AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_validation AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_testing_monitoring AS FLOAT) AS INT), 0))
+            AS wf_review,
+
+              ABS(COALESCE(CAST(TRY_CAST(wfe_in_review AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_under_review AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_validation AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_testing_monitoring AS FLOAT) AS INT), 0))
+            AS wfe_review,
+
+            ----------------------------------------------------------------
+            -- PENDING
+            ----------------------------------------------------------------
+              ABS(COALESCE(CAST(TRY_CAST(wf_deployment AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_pending_deployment AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_waiting AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_pending_customer_approval AS FLOAT) AS INT), 0))
+            AS wf_pending,
+
+             ABS(COALESCE(CAST(TRY_CAST(wfe_deployment AS FLOAT) AS INT), 0))
+           + ABS(COALESCE(CAST(TRY_CAST(wfe_pending_deployment AS FLOAT) AS INT), 0))
+           + ABS(COALESCE(CAST(TRY_CAST(wfe_waiting AS FLOAT) AS INT), 0))
+           + ABS(COALESCE(CAST(TRY_CAST(wfe_pending_customer_approval AS FLOAT) AS INT), 0))
+            AS wfe_pending,
+
+            ----------------------------------------------------------------
+            -- COMPLETED
+            ----------------------------------------------------------------
+
+              ABS(COALESCE(CAST(TRY_CAST(wf_resolved AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_resolved_under_monitoring AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_done AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_closed AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_approved AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_monitoring AS FLOAT) AS INT), 0))
+            AS wf_completed,
+
+
+            ABS(COALESCE(CAST(TRY_CAST(wfe_resolved AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_resolved_under_monitoring AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_done AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_closed AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_approved AS FLOAT) AS INT), 0))
+          + ABS(COALESCE(CAST(TRY_CAST(wfe_monitoring AS FLOAT) AS INT), 0))
+            AS wfe_completed,
+
+            ----------------------------------------------------------------
+            -- CANCELLED
+            ----------------------------------------------------------------
+            ABS(COALESCE(CAST(TRY_CAST(wf_cancelled AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wf_rejected AS FLOAT) AS INT), 0))
+            AS wf_cancelled,
+
+
+            ABS(COALESCE(CAST(TRY_CAST(wfe_cancelled AS FLOAT) AS INT), 0))
+            + ABS(COALESCE(CAST(TRY_CAST(wfe_rejected AS FLOAT) AS INT), 0))
+            AS wfe_cancelled
+
+        FROM bronze.issues_snapshot
+
+
+        TRUNCATE TABLE silver.issues_change_history;
+        Insert into silver.issues_change_history(
+            issue_history_id ,
+            issue_id ,
+            issue_field ,
+            change_value ,
+            created_date ,
+            change_group_id
+        )
+        SELECT  CAST(TRY_CAST(id AS FLOAT) AS BIGINT) AS issue_history_id,
+                CAST(TRY_CAST(issueid AS FLOAT) AS BIGINT) AS issue_id,
+                field as issue_field,
+                value as change_value,
+                CAST(TRY_CAST(created AS DATETIMEOFFSET) AS DATETIME2(0)) AS created_date,
+                CAST(TRY_CAST(change_group_id AS FLOAT) AS BIGINT) AS change_group_id
+        FROM bronze.issues_change_history
+
+        TRUNCATE TABLE silver.issues_snapshot_sample;
+        Insert into silver.issues_snapshot_sample(
+            issue_id ,
+            issue_num ,
+            issue_turn_no ,
+            issue_assignee ,
+            started_date ,
+            ended_date ,
+            spent_hours ,
+            steps,
+            comments_count,
+            valid ,
+            Q1_score ,
+            Q2_score,
+            Q3_score ,
+            notes
+        )
+        select  CAST(TRY_CAST(id AS FLOAT) AS BIGINT) AS issue_id,
+                CAST(TRY_CAST(issue_no AS FLOAT) AS INT) AS issue_num,
+                CAST(TRY_CAST(turn_no AS FLOAT) AS INT) AS issue_turn_no,
+                assignee AS issue_assignee,
+                CAST(TRY_CAST(started AS DATETIMEOFFSET) AS DATETIME2(0)) AS started_date,
+                CAST(TRY_CAST(ended AS DATETIMEOFFSET) AS DATETIME2(0)) AS ended_date,
+                TRY_CAST(spent_hours AS FLOAT),
+                steps,
+                comments_count,
+                valid,
+                CAST(TRY_CAST(Q1 AS FLOAT) AS INT) AS Q1_score,
+                CAST(TRY_CAST(Q2 AS FLOAT) AS INT) AS Q2_score,
+                CAST(TRY_CAST(Q3 AS FLOAT) AS INT) AS Q3_score,
+                notes
+        from bronze.issues_snapshot_sample
+
+        TRUNCATE TABLE silver.sample_utterances;
+        Insert into silver.sample_utterances(
+                    issue_id ,
+                    comment_id ,
+                    comment_seq ,
+                    utr_seq ,
+                    author ,
+                    created_date ,
+                    is_private_status ,
+                    actionbody ,
+                    author_role 
+        )
+        SELECT CAST(TRY_CAST(issueid AS FLOAT) AS BIGINT) AS issue_id,
+               CAST(TRY_CAST(id AS FLOAT) AS BIGINT) AS comment_id,
+               CAST(TRY_CAST(comment_seq AS FLOAT) AS INT),
+               CAST(TRY_CAST(comment_seq AS FLOAT) AS INT),
+               author,
+               CAST(TRY_CAST(created AS DATETIMEOFFSET) AS DATETIME2(0)) AS created_date,
+               CASE 
+                    WHEN is_private = '1.0' THEN 'Private'
+                    WHEN is_private = '0.0' THEN 'Not Private'
+                    ELSE 'Unknown'
+               END AS is_private_status,
+               actionbody,
+               author_role
+        FROM bronze.sample_utterances
+
+         SET @end_time = GETDATE();
+         PRINT '================================================='
+         PRINT 'Loading SILVER Layer Is Completed'
+         PRINT 'Total Load Duration: '+CAST(DATEDIFF(SECOND,@start_time,@end_time) AS NVARCHAR) + ' seconds';
+         PRINT '================================================='
+
+    END TRY
+    BEGIN CATCH
+        PRINT '================================================='
+        PRINT 'ERROR OCCUR DURING LOADING OF SILVER LAYER'
+        PRINT '================================================='
+        PRINT 'ERROR MESSAGE'+ ERROR_MESSAGE()
+        PRINT 'ERROR NUMBER'+ CAST(ERROR_NUMBER() AS NVARCHAR)
+        PRINT 'ERROR STATE'+ CAST(ERROR_STATE() AS NVARCHAR)
+    END CATCH
+END
+
