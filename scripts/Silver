@@ -1,0 +1,234 @@
+/*
+===============================================================================
+DDL Script: Create Silver Tables
+===============================================================================
+
+Script Purpose:
+Creates cleaned and standardized Silver layer tables from the Bronze layer.
+Applies proper data types, derived metrics, and prepares data for analytics
+and downstream Gold modeling.
+
+Run this script to initialize or refresh the Silver layer structure.
+
+===============================================================================
+*/
+
+CREATE OR ALTER PROCEDURE silver.create_silver AS
+BEGIN 
+    BEGIN TRY
+        PRINT '================================================='
+        PRINT 'Creating Silver Layer'
+        PRINT '================================================='
+        IF OBJECT_ID('silver.issues', 'U') IS NOT NULL
+            DROP TABLE silver.issues;
+       CREATE TABLE silver.issues(
+            -- =========================
+            -- Identifiers & Dates
+            -- =========================
+            issue_id BIGINT,
+            started_date DATETIME2(0),
+            ended_date DATETIME2(0),
+            issue_num INT,
+
+            -- =========================
+            -- Text Columns (NVARCHAR)
+            -- =========================
+            issue_proj NVARCHAR(50),
+            issue_reporter NVARCHAR(50),
+            issue_assignee NVARCHAR(50),
+            issue_type NVARCHAR(50),
+            issue_priority NVARCHAR(50),
+            issue_resolution NVARCHAR(50),
+            issue_status NVARCHAR(50),
+
+            -- =========================
+            -- Numeric Metrics
+            -- =========================
+            issue_contr_count INT,
+            issue_priority_rank INT,
+            issue_comments_count INT,
+
+            issue_created DATETIME2(0),
+            issue_resolution_date DATETIME2(0),
+            last_change_date DATETIME2(0),
+
+            -- =========================
+            -- Workflow Metrics (Merged)
+            -- =========================
+            wf_open INT,
+            wfe_open INT,
+
+            wf_in_progress INT,
+            wfe_in_progress INT,
+
+            wf_review INT,
+            wfe_review INT,
+
+            wf_pending INT,
+            wfe_pending INT,
+
+            wf_completed INT,
+            wfe_completed INT,
+
+            wf_cancelled INT,
+            wfe_cancelled INT,
+
+            wf_total_time AS 
+            (
+                ABS(wf_open)
+              + ABS(wf_in_progress)
+              + ABS(wf_review)
+              + ABS(wf_pending)
+              + ABS(wf_completed)
+              + ABS(wf_cancelled)
+            ) PERSISTED,
+            processing_steps AS
+                (
+                ABS(wfe_open)
+              + ABS(wfe_in_progress)
+              + ABS(wfe_review)
+              + ABS(wfe_pending)
+              + ABS(wfe_completed)
+              + ABS(wfe_cancelled)
+            ) PERSISTED,
+            dwh_create_date DATETIME2 DEFAULT GETDATE()
+        );
+
+        IF OBJECT_ID('silver.issues_snapshot', 'U') IS NOT NULL
+            DROP TABLE silver.issues_snapshot;
+            CREATE TABLE silver.issues_snapshot(
+            -- =========================  
+            -- Identifiers & Dates
+            -- =========================
+            issue_activity_id BIGINT,
+            issue_id BIGINT,
+            started_date DATETIME2(0),
+            ended_date DATETIME2(0),
+            issue_num INT,
+
+            -- =========================
+            -- Text Columns (NVARCHAR)
+            -- =========================
+            issue_proj NVARCHAR(200),
+            issue_reporter NVARCHAR(200),
+            issue_assignee NVARCHAR(200),
+            issue_type NVARCHAR(100),
+            issue_priority NVARCHAR(50),
+            issue_resolution NVARCHAR(200),
+            issue_status NVARCHAR(50),
+
+            -- =========================
+            -- Numeric Metrics
+            -- =========================
+            issue_contr_count INT,
+            issue_priority_rank INT,
+            issue_comments_count INT,
+
+            issue_created DATETIME2(0),
+            issue_resolution_date DATETIME2(0),
+            last_change_date DATETIME2(0),
+
+            -- =========================
+            -- Workflow Metrics (Merged)
+            -- =========================
+            wf_open INT,
+            wfe_open INT,
+
+            wf_in_progress INT,
+            wfe_in_progress INT,
+
+            wf_review INT,
+            wfe_review INT,
+
+            wf_pending INT,
+            wfe_pending INT,
+
+            wf_completed INT,
+            wfe_completed INT,
+
+            wf_cancelled INT,
+            wfe_cancelled INT,
+
+            wf_total_time AS 
+            (
+                ABS(wf_open)
+              + ABS(wf_in_progress)
+              + ABS(wf_review)
+              + ABS(wf_pending)
+              + ABS(wf_completed)
+              + ABS(wf_cancelled)
+            ) PERSISTED,
+            processing_steps AS
+                (
+                ABS(wfe_open)
+              + ABS(wfe_in_progress)
+              + ABS(wfe_review)
+              + ABS(wfe_pending)
+              + ABS(wfe_completed)
+              + ABS(wfe_cancelled)
+            ) PERSISTED,
+            dwh_create_date DATETIME2 DEFAULT GETDATE()
+        );
+
+        IF OBJECT_ID('silver.issues_change_history', 'U') IS NOT NULL
+            DROP TABLE silver.issues_change_history;
+        CREATE TABLE silver.issues_change_history (
+            issue_history_id BIGINT,
+            issue_id BIGINT,
+            issue_field NVARCHAR(10),
+            change_value NVARCHAR(50),
+            created_date DATETIME2(0),
+            change_group_id BIGINT,
+            dwh_create_date DATETIME2 DEFAULT GETDATE()
+        );
+
+        IF OBJECT_ID('silver.issues_snapshot_sample', 'U') IS NOT NULL
+            DROP TABLE silver.issues_snapshot_sample;
+        CREATE TABLE silver.issues_snapshot_sample (
+            issue_id BIGINT,
+            issue_num INT,
+            issue_turn_no INT,
+            issue_assignee NVARCHAR(50),
+            started_date DATETIME2(0),
+            ended_date DATETIME2(0),
+            spent_hours FLOAT,
+            steps INT,
+            comments_count INT,
+            valid NVARCHAR(10),
+            Q1_score INT,
+            Q2_score INT,
+            Q3_score INT,
+            notes NVARCHAR(MAX),
+            dwh_create_date DATETIME2 DEFAULT GETDATE()
+        );
+
+        IF OBJECT_ID('silver.sample_utterances', 'U') IS NOT NULL
+            DROP TABLE silver.sample_utterances;
+        CREATE TABLE silver.sample_utterances (
+            issue_id BIGINT,
+            comment_id BIGINT,
+            comment_seq INT,
+            utr_seq INT,
+            author NVARCHAR(50),
+            created_date DATETIME2(0),
+            is_private_status NVARCHAR(20),
+            actionbody NVARCHAR(MAX),     -- long text
+            author_role NVARCHAR(50),
+            dwh_create_date DATETIME2 DEFAULT GETDATE()
+        );
+        PRINT '================================================='
+        PRINT 'Silver Layer structure is created'
+        PRINT '================================================='
+    END TRY
+    BEGIN CATCH
+        PRINT '================================================='
+        PRINT 'ERROR OCCUR DURING LOADING OF Silver LAYER'
+        PRINT '================================================='
+        PRINT 'ERROR MESSAGE: '+ ERROR_MESSAGE()
+        PRINT 'ERROR NUMBER: '+ CAST(ERROR_NUMBER() AS NVARCHAR)
+        PRINT 'ERROR STATE: '+ CAST(ERROR_STATE() AS NVARCHAR)
+    END CATCH
+    
+END
+
+
