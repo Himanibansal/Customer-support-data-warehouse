@@ -1,17 +1,18 @@
 /*
 ===============================================================================
-DDL Script: Create Silver Tables
+ETL Script: Load Silver Tables
 ===============================================================================
 
 Script Purpose:
-Creates cleaned and standardized Silver layer tables from the Bronze layer.
-Applies proper data types, derived metrics, and prepares data for analytics
-and downstream Gold modeling.
+Loads and transforms data from the Bronze layer into cleaned and standardized
+Silver tables. Applies data type casting, business rules, derived metrics,
+and status normalization for analytics readiness.
 
-Run this script to initialize or refresh the Silver layer structure.
+Run this procedure after refreshing the Bronze layer.
 
 ===============================================================================
 */
+
 
 CREATE OR ALTER PROCEDURE Silver.load_silver AS
 BEGIN
