@@ -1,0 +1,48 @@
+/*
+===============================================================================
+Validation Script: Bronze Data Validation
+===============================================================================
+
+Script Purpose:
+Validates data loading into Bronze tables by checking record counts and
+sampling data to confirm successful ingestion and basic data integrity.
+
+Run this script after executing the Bronze load procedure.
+
+===============================================================================
+*/
+
+----issues table-------
+SELECT COUNT(*) 
+FROM bronze.issues;
+
+SELECT TOP 10 * 
+FROM bronze.issues
+
+----issues_snapshot table-------
+SELECT COUNT(*) 
+FROM bronze.issues_snapshot;
+
+SELECT TOP 10 * 
+FROM bronze.issues_snapshot;
+
+----issues_change_history-----
+SELECT COUNT(*) 
+FROM bronze.issues_change_history;
+
+SELECT TOP 10 * 
+FROM bronze.issues_change_history;
+
+----issues_snapshot_sample-----
+SELECT COUNT(*) 
+FROM bronze.issues_snapshot_sample;
+
+SELECT TOP 10 * 
+FROM bronze.issues_snapshot_sample;
+
+----sample_utterances-----
+SELECT COUNT(*) 
+FROM bronze.sample_utterances;
+
+SELECT TOP 10 * 
+FROM bronze.sample_utterances;
