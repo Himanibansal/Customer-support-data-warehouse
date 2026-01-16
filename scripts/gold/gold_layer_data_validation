@@ -1,0 +1,81 @@
+/*
+===============================================================================
+Validation Script: Gold Layer Data Validation
+===============================================================================
+
+Script Purpose:
+Validates Gold layer views by verifying record availability, referential
+consistency, and basic analytical sanity checks.
+
+Run this script after creating Gold views.
+
+===============================================================================
+*/
+
+---------------------------------------------------
+-- Row Count Validation
+---------------------------------------------------
+SELECT 'dim_issues' AS table_name, COUNT(*) AS record_count
+FROM gold.dim_issues;
+
+SELECT 'dim_issues_details' AS table_name, COUNT(*) AS record_count
+FROM gold.dim_issues_details;
+
+SELECT 'dim_comment' AS table_name, COUNT(*) AS record_count
+FROM gold.dim_comment;
+
+SELECT 'dim_change_history' AS table_name, COUNT(*) AS record_count
+FROM gold.dim_change_history;
+
+SELECT 'fact_issues_main' AS table_name, COUNT(*) AS record_count
+FROM gold.fact_issues_main;
+
+
+---------------------------------------------------
+-- Sample Data Validation
+---------------------------------------------------
+SELECT TOP 10 * FROM gold.dim_issues;
+SELECT TOP 10 * FROM gold.dim_issues_details;
+SELECT TOP 10 * FROM gold.dim_comment;
+SELECT TOP 10 * FROM gold.dim_change_history;
+SELECT TOP 10 * FROM gold.fact_issues_main;
+
+
+---------------------------------------------------
+-- Referential Integrity Checks
+---------------------------------------------------
+
+-- Fact records without matching Issue dimension
+SELECT COUNT(*) AS orphan_issue_records
+FROM gold.fact_issues_main f
+LEFT JOIN gold.dim_issues d
+       ON f.issue_id = d.issue_id
+WHERE d.issue_id IS NULL;
+
+-- Fact records without matching Change History dimension
+SELECT COUNT(*) AS orphan_history_records
+FROM gold.fact_issues_main f
+LEFT JOIN gold.dim_change_history h
+       ON f.issue_history_id = h.issue_history_id
+WHERE h.issue_history_id IS NULL;
+
+
+---------------------------------------------------
+-- Business Sanity Checks
+---------------------------------------------------
+
+-- Issues by Status Distribution
+SELECT issue_status, COUNT(*) AS issue_count
+FROM gold.dim_issues
+GROUP BY issue_status
+ORDER BY issue_count DESC;
+
+-- Average Workflow Time
+SELECT AVG(wf_total_time) AS avg_workflow_time
+FROM gold.dim_issues_details;
+
+-- Comment Volume per Issue
+SELECT issue_id, COUNT(*) AS comment_count
+FROM gold.dim_comment
+GROUP BY issue_id
+ORDER BY comment_count DESC;
