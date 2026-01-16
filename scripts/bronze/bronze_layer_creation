@@ -1,0 +1,224 @@
+/*
+===============================================================================
+DDL Script: Create Bronze Tables
+===============================================================================
+
+Script Purpose:
+This script initializes the Bronze layer of the Customer Support Data Warehouse.
+It creates the required schema and raw staging tables, dropping existing tables
+if they already exist to ensure consistent re-deployment.
+
+The Bronze layer represents the raw ingestion zone where data is stored exactly
+as received from source systems without transformation. This layer ensures
+traceability, auditability, and reliable downstream processing.
+
+Run this script to define or refresh the DDL structure of Bronze tables.
+
+===============================================================================
+*/
+
+IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'bronze')
+BEGIN
+    EXEC('CREATE SCHEMA bronze');
+END;
+GO
+CREATE OR ALTER PROCEDURE bronze.create_bronze AS
+BEGIN 
+    BEGIN TRY
+        
+        PRINT '================================================='
+        PRINT 'Creating Bronze Layer'
+        PRINT '================================================='
+        IF OBJECT_ID('bronze.issues', 'U') IS NOT NULL
+            DROP TABLE bronze.issues;
+        CREATE TABLE bronze.issues (
+            id NVARCHAR(100),
+            started NVARCHAR(100),
+            ended NVARCHAR(100),
+            issue_num NVARCHAR(100),
+            issue_proj NVARCHAR(100),
+            issue_reporter NVARCHAR(100),
+            issue_assignee NVARCHAR(100),
+            issue_contr_count NVARCHAR(100),
+            issue_type NVARCHAR(100),
+            issue_priority NVARCHAR(100),
+            issue_created NVARCHAR(100),
+            issue_resolution_date NVARCHAR(100),
+            issue_resolution NVARCHAR(100),
+            issue_status NVARCHAR(100),
+            issue_comments_count NVARCHAR(100),
+            last_change_date NVARCHAR(100),
+            wf_in_review NVARCHAR(100),
+            wfe_in_review NVARCHAR(100),
+            wf_deployment NVARCHAR(100),
+            wfe_deployment NVARCHAR(100),
+            wf_resolved NVARCHAR(100),
+            wfe_resolved NVARCHAR(100),
+            wf_open NVARCHAR(100),
+            wfe_open NVARCHAR(100),
+            wf_monitoring NVARCHAR(100),
+            wfe_monitoring NVARCHAR(100),
+            wf_done NVARCHAR(100),
+            wfe_done NVARCHAR(100),
+            wf_pending_customer_approval NVARCHAR(100),
+            wfe_pending_customer_approval NVARCHAR(100),
+            wf_rejected NVARCHAR(100),
+            wfe_rejected NVARCHAR(100),
+            wf_testing_monitoring NVARCHAR(100),
+            wfe_testing_monitoring NVARCHAR(100),
+            wf_in_progress NVARCHAR(100),
+            wfe_in_progress NVARCHAR(100),
+            wf_reopened NVARCHAR(100),
+            wfe_reopened NVARCHAR(100),
+            wf_to_do NVARCHAR(100),
+            wfe_to_do NVARCHAR(100),
+            wf_validation NVARCHAR(100),
+            wfe_validation NVARCHAR(100),
+            wf_resolved_under_monitoring NVARCHAR(100),
+            wfe_resolved_under_monitoring NVARCHAR(100),
+            wf_closed NVARCHAR(100),
+            wfe_closed NVARCHAR(100),
+            wf_waiting NVARCHAR(100),
+            wfe_waiting NVARCHAR(100),
+            wf_cancelled NVARCHAR(100),
+            wfe_cancelled NVARCHAR(100),
+            wf_under_review NVARCHAR(100),
+            wfe_under_review NVARCHAR(100),
+            wf_approved NVARCHAR(100),
+            wfe_approved NVARCHAR(100),
+            wf_pending_deployment NVARCHAR(100),
+            wfe_pending_deployment NVARCHAR(100),
+            wf_total_time NVARCHAR(100),
+            processing_steps NVARCHAR(100)
+        );
+
+
+        IF OBJECT_ID('bronze.issues_snapshot', 'U') IS NOT NULL
+            DROP TABLE bronze.issues_snapshot;
+        CREATE TABLE bronze.issues_snapshot (
+            idx NVARCHAR(50),
+            id NVARCHAR(50),
+            started NVARCHAR(100),
+            ended NVARCHAR(100),
+            issue_num NVARCHAR(50),
+            issue_proj NVARCHAR(50),
+            issue_reporter NVARCHAR(100),
+            issue_assignee NVARCHAR(100),
+            issue_contr_count NVARCHAR(50),
+            issue_type NVARCHAR(50),
+            issue_priority NVARCHAR(50),
+            issue_created NVARCHAR(100),
+            issue_resolution_date NVARCHAR(100),
+            issue_resolution NVARCHAR(50),
+            issue_status NVARCHAR(50),
+            issue_comments_count NVARCHAR(50),
+            last_change_date NVARCHAR(100),
+            wf_in_review NVARCHAR(50),
+            wfe_in_review NVARCHAR(50),
+            wf_deployment NVARCHAR(50),
+            wfe_deployment NVARCHAR(50),
+            wf_resolved NVARCHAR(50),
+            wfe_resolved NVARCHAR(50),
+            wf_open NVARCHAR(50),
+            wfe_open NVARCHAR(50),
+            wf_monitoring NVARCHAR(50),
+            wfe_monitoring NVARCHAR(50),
+            wf_done NVARCHAR(50),
+            wfe_done NVARCHAR(50),
+            wf_pending_customer_approval NVARCHAR(50),
+            wfe_pending_customer_approval NVARCHAR(50),
+            wf_rejected NVARCHAR(50),
+            wfe_rejected NVARCHAR(50),
+            wf_testing_monitoring NVARCHAR(50),
+            wfe_testing_monitoring NVARCHAR(50),
+            wf_in_progress NVARCHAR(50),
+            wfe_in_progress NVARCHAR(50),
+            wf_reopened NVARCHAR(50),
+            wfe_reopened NVARCHAR(50),
+            wf_to_do NVARCHAR(50),
+            wfe_to_do NVARCHAR(50),
+            wf_validation NVARCHAR(50),
+            wfe_validation NVARCHAR(50),
+            wf_resolved_under_monitoring NVARCHAR(50),
+            wfe_resolved_under_monitoring NVARCHAR(50),
+            wf_closed NVARCHAR(50),
+            wfe_closed NVARCHAR(50),
+            wf_waiting NVARCHAR(50),
+            wfe_waiting NVARCHAR(50),
+            wf_cancelled NVARCHAR(50),
+            wfe_cancelled NVARCHAR(50),
+            wf_under_review NVARCHAR(50),
+            wfe_under_review NVARCHAR(50),
+            wf_approved NVARCHAR(50),
+            wfe_approved NVARCHAR(50),
+            wf_pending_deployment NVARCHAR(50),
+            wfe_pending_deployment NVARCHAR(50),
+            turn NVARCHAR(50),
+            wf_total_time NVARCHAR(50),
+            processing_steps NVARCHAR(50)
+        );
+
+        IF OBJECT_ID('bronze.issues_change_history', 'U') IS NOT NULL
+            DROP TABLE bronze.issues_change_history;
+        CREATE TABLE bronze.issues_change_history (
+            id NVARCHAR(50),
+            issueid NVARCHAR(50),
+            field NVARCHAR(100),
+            value NVARCHAR(100),
+            created NVARCHAR(100),
+            change_group_id NVARCHAR(50)
+        );
+
+        IF OBJECT_ID('bronze.issues_snapshot_sample', 'U') IS NOT NULL
+            DROP TABLE bronze.issues_snapshot_sample;
+        CREATE TABLE bronze.issues_snapshot_sample (
+            id NVARCHAR(50),
+            issue_no NVARCHAR(50),
+            project NVARCHAR(100),
+            reporter NVARCHAR(100),
+            issue_type NVARCHAR(50),
+            issue_priority NVARCHAR(50),
+            contributors NVARCHAR(50),
+            turn_no NVARCHAR(50),
+            assignee NVARCHAR(100),
+            started NVARCHAR(100),
+            ended NVARCHAR(100),
+            spent_hours NVARCHAR(50),
+            steps NVARCHAR(50),
+            comments_count NVARCHAR(50),
+            valid NVARCHAR(20),
+            Q1 NVARCHAR(10),
+            Q2 NVARCHAR(10),
+            Q3 NVARCHAR(10),
+            notes NVARCHAR(MAX)
+        );
+
+        IF OBJECT_ID('bronze.sample_utterances', 'U') IS NOT NULL
+            DROP TABLE bronze.sample_utterances;
+        CREATE TABLE bronze.sample_utterances (
+            issueid NVARCHAR(100),
+            id NVARCHAR(100),
+            comment_seq NVARCHAR(50),
+            utr_seq NVARCHAR(50),
+            author NVARCHAR(100),
+            created NVARCHAR(100),
+            is_private NVARCHAR(50),
+            actionbody NVARCHAR(MAX),     -- long text
+            author_role NVARCHAR(50)
+        );
+        PRINT '================================================='
+        PRINT 'Bronze Layer structure is created'
+        PRINT '================================================='
+    END TRY
+    BEGIN CATCH
+        PRINT '================================================='
+        PRINT 'ERROR OCCUR DURING LOADING OF BRONZE LAYER'
+        PRINT '================================================='
+        PRINT 'ERROR MESSAGE: '+ ERROR_MESSAGE()
+        PRINT 'ERROR NUMBER: '+ CAST(ERROR_NUMBER() AS NVARCHAR)
+        PRINT 'ERROR STATE: '+ CAST(ERROR_STATE() AS NVARCHAR)
+    END CATCH
+    
+END
+
+
