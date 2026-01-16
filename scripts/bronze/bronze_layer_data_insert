@@ -1,0 +1,114 @@
+/*
+===============================================================================
+ETL Script: Load Bronze Tables
+===============================================================================
+
+Script Purpose:
+This script loads raw source data into the Bronze layer tables using BULK INSERT
+operations. It truncates existing data and reloads fresh data from CSV files
+to ensure a consistent and reproducible ingestion process.
+
+The procedure ingests multiple source datasets including issues, snapshots,
+change history, and conversation utterances. All data is stored without any
+transformations to preserve raw source integrity for downstream processing.
+
+Execution includes runtime logging, load duration tracking, and error handling
+to support monitoring and operational reliability.
+
+Run this procedure to refresh the Bronze layer with the latest source data.
+
+===============================================================================
+*/
+
+/*
+Note:
+The dataset file paths used in the BULK INSERT statements are environment-specific.
+Please update the file locations according to your local or server directory
+structure before executing this script
+*/
+
+CREATE OR ALTER PROCEDURE bronze.load_bronze AS
+BEGIN
+    DECLARE @start_time DATETIME, @end_time DATETIME;
+    BEGIN TRY
+        SET @start_time = GETDATE();
+        PRINT '================================================='
+        PRINT 'Loading Bronze Layer'
+        PRINT '================================================='
+        TRUNCATE TABLE bronze.issues;
+        BULK INSERT bronze.issues
+        FROM 'D:\DW PROJECT\Help Desk Tickets\Help Desk Tickets\issues.csv'
+        WITH (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            FIELDQUOTE = '"',
+            ROWTERMINATOR = '\n',
+            TABLOCK,
+            CODEPAGE = '65001'
+        );
+
+        TRUNCATE TABLE bronze.issues_snapshot;
+        BULK INSERT bronze.issues_snapshot
+        FROM 'D:\DW PROJECT\Help Desk Tickets\Help Desk Tickets\issues_snapshot.csv'
+        WITH (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            FIELDQUOTE = '"',
+            ROWTERMINATOR = '\n',
+            TABLOCK,
+            CODEPAGE = '65001'
+        );
+
+        TRUNCATE TABLE bronze.issues_change_history;
+        BULK INSERT bronze.issues_change_history
+        FROM 'D:\DW PROJECT\Help Desk Tickets\Help Desk Tickets\issues_change_history.csv'
+        WITH (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            FIELDQUOTE = '"',
+            ROWTERMINATOR = '\n',
+            TABLOCK,
+            CODEPAGE = '65001'
+        );
+
+        TRUNCATE TABLE bronze.issues_snapshot_sample;
+        BULK INSERT bronze.issues_snapshot_sample
+        FROM 'D:\DW PROJECT\Help Desk Tickets\Help Desk Tickets\issues_snapshot_sample.csv'
+        WITH (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            FIELDQUOTE = '"',
+            ROWTERMINATOR = '\n',
+            TABLOCK,
+            CODEPAGE = '65001'
+        );
+
+        TRUNCATE TABLE bronze.sample_utterances;
+        BULK INSERT bronze.sample_utterances
+        FROM 'D:\DW PROJECT\Help Desk Tickets\Help Desk Tickets\sample_utterances.csv'
+        WITH (
+            FORMAT = 'CSV',
+            FIRSTROW = 2,
+            FIELDQUOTE = '"',
+            CODEPAGE = '65001', 
+            TABLOCK
+        );
+         SET @end_time = GETDATE();
+         PRINT '================================================='
+         PRINT 'Loading Bronze Layer Is Completed'
+         PRINT 'Total Load Duration: '+CAST(DATEDIFF(SECOND,@start_time,@end_time) AS NVARCHAR) + ' seconds';
+         PRINT '================================================='
+
+    END TRY
+    BEGIN CATCH
+        PRINT '================================================='
+        PRINT 'ERROR OCCUR DURING LOADING OF BRONZE LAYER'
+        PRINT '================================================='
+        PRINT 'ERROR MESSAGE'+ ERROR_MESSAGE()
+        PRINT 'ERROR NUMBER'+ CAST(ERROR_NUMBER() AS NVARCHAR)
+        PRINT 'ERROR STATE'+ CAST(ERROR_STATE() AS NVARCHAR)
+    END CATCH
+END
+
+
+  
