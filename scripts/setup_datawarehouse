@@ -1,0 +1,75 @@
+/*
+===============================================================================
+Setup Script: Data Warehouse Initialization
+===============================================================================
+
+Script Purpose:
+Creates the DataWarehouse database and required schemas (bronze, silver, gold),
+and executes the ETL pipeline for Bronze and Silver layers.
+
+The Gold layer views should be executed separately using the
+gold layer deployment script.
+
+Run this script once during environment setup or when rebuilding
+the data warehouse.
+
+===============================================================================
+*/
+
+USE master;
+GO
+
+---------------------------------------------------
+-- Database Creation Check
+---------------------------------------------------
+IF EXISTS (SELECT 1 FROM sys.databases WHERE name = 'DataWarehouse')
+BEGIN
+    PRINT '==============================================================='
+    PRINT 'DATABASE "DataWarehouse" ALREADY EXISTS'
+    PRINT '==============================================================='
+END
+ELSE
+BEGIN
+    CREATE DATABASE DataWarehouse;
+    PRINT '==============================================================='
+    PRINT 'DATABASE "DataWarehouse" CREATED SUCCESSFULLY'
+    PRINT '==============================================================='
+END
+GO
+
+USE DataWarehouse;
+GO
+
+---------------------------------------------------
+-- Schema Creation
+---------------------------------------------------
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'bronze')
+    EXEC('CREATE SCHEMA bronze');
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'silver')
+    EXEC('CREATE SCHEMA silver');
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'gold')
+    EXEC('CREATE SCHEMA gold');
+GO
+
+---------------------------------------------------
+-- Bronze Layer Execution
+---------------------------------------------------
+EXEC bronze.create_bronze;  
+EXEC bronze.load_bronze;
+
+---------------------------------------------------
+-- Silver Layer Execution
+---------------------------------------------------
+EXEC silver.create_silver;
+EXEC silver.load_silver;
+
+---------------------------------------------------
+-- Gold Layer Execution
+---------------------------------------------------
+-- Execute the Gold layer views using:
+-- gold_create_views.sql
+---------------------------------------------------
