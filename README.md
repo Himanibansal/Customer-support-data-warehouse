@@ -34,37 +34,6 @@ Gold Layer    → Star Schema (Fact & Dimension tables)
 
 ## ⭐ Star Schema Design
 
-The Gold layer is modeled using a **Star Schema** to optimize query performance and reporting.
-
-### Fact Table
-
-* fact_issues (or fact_tickets)
-
-  * Ticket count
-  * Resolution time
-  * SLA metrics
-  * Reopen count
-  * Status duration
-
-### Dimension Tables
-
-* dim_customer
-* dim_agent
-* dim_issue_type
-* dim_priority
-* dim_status
-* dim_date
-* dim_project
-
-Each dimension connects directly to the fact table using surrogate keys.
-Perfect — thanks for sharing the exact format you want 👍
-Here is your **Star Schema description customized for your project**, in the same Markdown structure and tone.
-You can directly paste this into your README.
-
----
-
-## ⭐ Star Schema Design
-
 The Gold layer is modeled using a **Star Schema** to optimize query performance, simplify analytical queries, and support scalable reporting and business intelligence use cases.
 
 ### Fact Table
