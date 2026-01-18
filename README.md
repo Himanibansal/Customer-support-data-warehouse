@@ -57,6 +57,44 @@ The Gold layer is modeled using a **Star Schema** to optimize query performance 
 * dim_project
 
 Each dimension connects directly to the fact table using surrogate keys.
+Perfect — thanks for sharing the exact format you want 👍
+Here is your **Star Schema description customized for your project**, in the same Markdown structure and tone.
+You can directly paste this into your README.
+
+---
+
+## ⭐ Star Schema Design
+
+The Gold layer is modeled using a **Star Schema** to optimize query performance, simplify analytical queries, and support scalable reporting and business intelligence use cases.
+
+### Fact Table
+
+* **gold.fact_issues_main**
+
+  * Ticket lifecycle relationships (issues, snapshots, change history, comments)
+  * Activity volume tracking
+  * Resolution and workflow movement analysis
+  * Operational KPIs and throughput metrics
+
+### Dimension Tables
+
+* **gold.dim_issues**
+
+  * Core ticket attributes: project, priority, status, resolution, contributor count
+
+* **gold.dim_issues_details**
+
+  * Workflow metrics: processing time, steps, spent hours, validation scores
+
+* **gold.dim_comment**
+
+  * Comment metadata: author, timestamps, privacy status, message content
+
+* **gold.dim_change_history**
+
+  * Field-level change tracking with timestamps and audit history
+
+Each dimension connects directly to the fact view through shared business keys, enabling efficient slicing and dicing across operational and behavioral metrics.
 
 ---
 
