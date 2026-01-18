@@ -100,22 +100,6 @@ Each dimension connects directly to the fact view through shared business keys, 
 
 ---
 
-## 📁 Project Structure
-
-```
-Customer-support-data-warehouse/
-│
-├── bronze/
-├── silver/
-├── gold/
-│   ├── fact_tables/
-│   └── dimension_tables/
-├── scripts/
-└── README.md
-```
-
----
-
 ## 📈 Key Features
 
 * Star schema optimized for analytics
